@@ -1,5 +1,5 @@
 # 🚗 운전자 이상 행동 감지 및 알람 프로그램 개발
-![Image](https://github.com/user-attachments/assets/301a18f4-2523-4b9b-b1e8-6806479784e8)
+![Image](https://github.com/user-attachments/assets/b413a67e-2fc1-424a-bc99-9894c1a47d5f)
 
 
 

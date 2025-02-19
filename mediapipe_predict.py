@@ -18,8 +18,7 @@ face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_con
 hands = mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
-# 이전 프레임의 코 끝 좌표 저장
-
+# 스트리밍 시작
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -27,7 +26,10 @@ while cap.isOpened():
         break
 
     img_height, img_width, _ = frame.shape
-    
+    # detect_objects(frame)
+    detected_classes = detect_objects(frame)
+    print(detected_classes)
+
     # BGR → RGB 변환
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -39,7 +41,7 @@ while cap.isOpened():
     # 초기값 설정
     landmarks = {}
     landmarks_pose = {}
-    ear = mouth_open = horizontal_movement = vertical_movement = rotation_angle = 0
+    ear = mouth_open = horizontal_movement = vertical_movement = rotation_angle = 1000
     mouth_distance = left_ear_distance = right_ear_distance = 1000
 
 
@@ -61,7 +63,6 @@ while cap.isOpened():
             mouth_open = calc_yawn(landmarks)
 
             
-
     if hand_results.multi_hand_landmarks:
         for hand_landmarks in hand_results.multi_hand_landmarks:
             for idx, landmark in enumerate(hand_landmarks.landmark):
@@ -72,7 +73,7 @@ while cap.isOpened():
                 if idx in [0]:
                     cv2.putText(frame, str(idx), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
                 
-                print(f"Hand detected: {hand_results.multi_hand_landmarks is not None}")
+                # print(f"Hand detected: {hand_results.multi_hand_landmarks is not None}")
 
             hand_positions = [[lm.x, lm.y] for lm in hand_landmarks.landmark]
             mouth_distance = hand_near_mouth(hand_positions, landmarks)
@@ -88,6 +89,7 @@ while cap.isOpened():
         horizontal_movement, vertical_movement, rotation_angle = get_head_pose(landmarks, landmarks_pose)
 
     # 수치 테스트
+    cv2.putText(frame, f"Object Detected : {detected_classes}", (1300, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     cv2.putText(frame, f"Mouth open : {round(mouth_open, 2)}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
     cv2.putText(frame, f"Eyes open : {round(ear,2)}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
     cv2.putText(frame, f"Hand-Left ear dist : {round(left_ear_distance, 1)}", (50, 350), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
@@ -98,7 +100,7 @@ while cap.isOpened():
     cv2.putText(frame, f"Rotation Angle: {round(rotation_angle, 2)}", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
     # 행동 분류
-    behavior = classify_behavior(ear, mouth_open, mouth_distance, left_ear_distance, right_ear_distance, horizontal_movement, vertical_movement, rotation_angle)
+    behavior = classify_behavior(ear, mouth_open, mouth_distance, left_ear_distance, right_ear_distance, horizontal_movement, vertical_movement, rotation_angle, detected_classes)
 
     # 결과 출력
     cv2.putText(frame, behavior, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)

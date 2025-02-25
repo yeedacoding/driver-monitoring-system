@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WebRTC YOLO 객체 탐지</title>
+  <style>
+    video {
+      width: 640px;
+      height: 480px;
+      border: 1px solid #333;
+      background: #000;
+    }
+    #results {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>WebRTC YOLO 객체 탐지</h1>
+  <video id="video" autoplay playsinline></video>
+  <div id="results">
+    <h3>탐지된 객체: <span id="highestResult">없음</span></h3>
+  </div>
+  <script>
+    const pc = new RTCPeerConnection();
+
+    // 클라이언트에서는 data channel을 직접 생성하지 않고,
+    // 서버에서 생성한 채널이 ondatachannel 이벤트로 수신되도록 한다.
+    pc.ondatachannel = (event) => {
+      const dataChannel = event.channel;
+      console.log("클라이언트 ondatachannel 이벤트 발생:", event);
+      dataChannel.onopen = () => {
+        console.log("클라이언트 데이터 채널 열림");
+      };
+      dataChannel.onmessage = (event) => {
+        console.log("클라이언트 데이터 채널 메시지 수신:", event.data);
+        try {
+          const result = JSON.parse(event.data);
+          const highestResultSpan = document.getElementById("highestResult");
+          highestResultSpan.innerText = `Label: ${result.label}, Confidence: ${result.confidence.toFixed(4)}`;
+        } catch (err) {
+          console.error("데이터 채널 메시지 파싱 에러:", err);
+        }
+      };
+    };
+
+    pc.ontrack = (event) => {
+      console.log("원격 트랙 수신:", event);
+      if (event.streams && event.streams[0]) {
+        document.getElementById("video").srcObject = event.streams[0];
+      }
+    };
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then(stream => {
+        stream.getTracks().forEach(track => {
+          pc.addTrack(track, stream);
+        });
+        return pc.createOffer();
+      })
+      .then(offer => pc.setLocalDescription(offer))
+      .then(() => {
+        return fetch("http://localhost:8080/offer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sdp: pc.localDescription.sdp,
+            type: pc.localDescription.type
+          })
+        });
+      })
+      .then(response => response.json())
+      .then(answer => {
+        pc.setRemoteDescription(answer);
+      })
+      .catch(err => console.error(err));
+  </script>
+</body>
+</html>

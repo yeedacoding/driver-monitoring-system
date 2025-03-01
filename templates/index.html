@@ -2,8 +2,37 @@
 <html>
 <head>
     <title>Driver Abnormal Behavior Detection Stream with YOLO</title>
+    <style>
+        body {
+            background-color: #facf32; /* 원하는 배경색으로 변경 */
+            color: #333; /* 글자 색상 */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center; /* 중앙 정렬 */
+            flex-direction: column;
+        }
+        div {
+            width : 100vw;
+            height : 350px;
+            background: url("static/background.png") center;
+            display: flex;
+            justify-content: center;
+            align-items: center; /* 중앙 정렬 */
+        }
+        .full-width-img {
+            width: 30%;
+            /* height: 15%; */
+            display: block;
+        }
+    </style>
 </head>
 <body>
-    <h1>실시간 운전자 이상행동 탐지 with YOLO</h1>
-    <img src="{{ url_for('video_feed') }}" width="50%">
+    <div>
+        <img class="full-width-img" src="{{ url_for('static', filename='title1.png') }}">
+    </div>
+    
+    <!-- <h1>실시간 운전자 이상행동 탐지 with YOLO</h1> -->
+    <img src="{{ url_for('video_feed') }}" width="60%">
 </body>

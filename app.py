@@ -9,7 +9,7 @@ from flask_socketio import SocketIO
 app = Flask(__name__, static_folder='static')
 socketio = SocketIO(app, async_mode="threading")  # 비동기 모드 설정
 
-# ✅ ONNX 모델 로드
+# ONNX 모델 로드
 onnx_model_path_1 = "weights/yolov11n_20250226_075134_e50b32_dataset_face_class_only/weights/best.onnx"
 onnx_model_path_2 = "weights/yolov11n_20250226_01_41_20_e50b32_dataset_calling_drinking_only/weights/best.onnx"
 
@@ -83,29 +83,31 @@ def detect_objects(session, frame, class_names, color):
     return detected_classes
 
 def process_alerts(detected_classes):
-    """ 감지된 행동에 따라 경고 알람 재생 """
-    for class_name in detected_classes:
-        if class_name == "SafeDriving":
-            continue  # 안전 운전은 알람 필요 없음
+    """ 감지된 행동에 따라 경고 알람 재생 (재감지 시 시간 초기화 문제 해결) """
+    current_time = time.time()
 
-        if class_name in state_flags:
-            state = state_flags[class_name]
+    for class_name in state_flags:
+        state = state_flags[class_name]
 
+        if class_name in detected_classes:  # 감지됨
             if not state["detected"]:  # 처음 감지된 경우
-                state["start_time"] = time.time()
+                state["start_time"] = current_time
                 state["detected"] = True
             else:
                 # SleepyDriving은 2초 후, 나머지는 4초 후 알람
                 if class_name == "SleepyDriving":
-                    if time.time() - state["start_time"] >= 2 and not pygame.mixer.get_busy():
+                    if current_time - state["start_time"] >= 2 and alarms[class_name].get_num_channels() == 0:
                         alarms[class_name].play()
-                elif time.time() - state["start_time"] >= 4:
-                    if not pygame.mixer.get_busy():
+                        state["start_time"] = current_time  # 알람 재생 후 시간 리셋
+                else:
+                    if current_time - state["start_time"] >= 4 and alarms[class_name].get_num_channels() == 0:
                         alarms[class_name].play()
-        else:
-            # 감지가 종료된 경우 상태 초기화
-            state_flags[class_name]["start_time"] = None
-            state_flags[class_name]["detected"] = False
+                        state["start_time"] = current_time  # 알람 재생 후 시간 리셋
+
+        else:  # 감지가 안 됨 → 상태 초기화
+            state["start_time"] = None
+            state["detected"] = False
+
 
 
 def gen_frames():

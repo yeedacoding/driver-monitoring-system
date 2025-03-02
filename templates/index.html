@@ -2,29 +2,30 @@
 <html>
 <head>
     <title>Driver Abnormal Behavior Detection Stream with YOLO</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
     <style>
         body {
-            background-color: #facf32; /* 원하는 배경색으로 변경 */
-            color: #333; /* 글자 색상 */
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center; /* 중앙 정렬 */
-            flex-direction: column;
+            background-color: #facf32;
+            color: #333;
+            text-align: center;
         }
         div {
-            width : 100vw;
-            height : 350px;
-            background: url("static/background.png") center;
+            width: 100vw;
+            height: 350px;
+            background: url("{{ url_for('static', filename='background.png') }}") center;
             display: flex;
             justify-content: center;
-            align-items: center; /* 중앙 정렬 */
+            align-items: center;
         }
         .full-width-img {
             width: 30%;
-            /* height: 15%; */
             display: block;
+        }
+        #detected-actions {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: red;
         }
     </style>
 </head>
@@ -32,7 +33,17 @@
     <div>
         <img class="full-width-img" src="{{ url_for('static', filename='title.png') }}">
     </div>
-    
-    <!-- <h1>실시간 운전자 이상행동 탐지 with YOLO</h1> -->
     <img src="{{ url_for('video_feed') }}" width="60%">
+    
+    <p id="detected-actions">감지된 행동: 없음</p>
+
+    <script>
+        var socket = io();
+        socket.on("detected_actions", function(data) {
+            console.log("📌 감지된 데이터:", data); // ✅ 웹 브라우저 콘솔에서 확인
+            var actions = data.actions.length > 0 ? data.actions.join(", ") : "없음";
+            document.getElementById("detected-actions").innerText = "감지된 행동: " + actions;
+        });
+    </script>
 </body>
+</html>

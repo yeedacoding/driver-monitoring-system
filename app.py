@@ -130,7 +130,7 @@ def gen_frames():
         process_alerts(detected_classes)
 
         # 감지된 데이터 확인 (터미널 출력)
-        print(f"📌 감지된 행동: {detected_classes}")
+        print(f"감지된 행동: {detected_classes}")
 
         # 감지된 행동을 웹으로 전송
         socketio.emit("detected_actions", {"actions": detected_classes})

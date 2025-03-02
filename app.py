@@ -9,18 +9,18 @@ from flask_socketio import SocketIO
 app = Flask(__name__, static_folder='static')
 socketio = SocketIO(app, async_mode="threading")  # 비동기 모드 설정
 
-# ONNX 모델 로드
+# ✅ ONNX 모델 로드
 onnx_model_path_1 = "weights/yolov11n_20250226_075134_e50b32_dataset_face_class_only/weights/best.onnx"
 onnx_model_path_2 = "weights/yolov11n_20250226_01_41_20_e50b32_dataset_calling_drinking_only/weights/best.onnx"
 
 session_1 = ort.InferenceSession(onnx_model_path_1, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 session_2 = ort.InferenceSession(onnx_model_path_2, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 
-# 클래스 정의
+# ✅ 클래스 정의
 class_names_1 = ["Distracted", "SafeDriving", "SleepyDriving", "Yawn"]
 class_names_2 = ["Calling", "Drinking"]
 
-# pygame 초기화 및 알람 파일 로드
+# ✅ pygame 초기화 및 알람 파일 로드
 pygame.mixer.init()
 alarms = {
     "SleepyDriving": pygame.mixer.Sound("asset/sleepy.mp3"),
@@ -30,7 +30,7 @@ alarms = {
     "Drinking": pygame.mixer.Sound("asset/drinking.mp3"),
 }
 
-# 감지 상태 변수 초기화
+# ✅ 감지 상태 변수 초기화
 state_flags = {
     "Distracted": {"start_time": None, "detected": False},
     "SafeDriving": {"start_time": None, "detected": False},  # 알람 없음
@@ -62,6 +62,8 @@ def detect_objects(session, frame, class_names, color):
     detections = outputs[0][0]  # (1, N, 6) → (N, 6)
 
     detected_classes = []
+    bounding_boxes = []  # 바운딩 박스 리스트
+
     for det in detections:
         x1, y1, x2, y2, confidence, class_id = det[:6]
 
@@ -74,74 +76,80 @@ def detect_objects(session, frame, class_names, color):
         if confidence > 0.3 and 0 <= class_id < len(class_names):  # 신뢰도 필터링 및 클래스 범위 체크
             class_name = class_names[int(class_id)]
             detected_classes.append(class_name)
+            bounding_boxes.append((x1, y1, x2, y2, class_name, confidence))
 
-            # 바운딩 박스 및 라벨 표시
-            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            cv2.putText(frame, f"{class_name} ({confidence:.2f})", (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
-
-    return detected_classes
+    return detected_classes, bounding_boxes
 
 def process_alerts(detected_classes):
-    """ 감지된 행동에 따라 경고 알람 재생 (재감지 시 시간 초기화 문제 해결) """
+    """ 감지된 행동에 따라 경고 알람 재생 (SafeDriving 제외) """
     current_time = time.time()
 
     for class_name in state_flags:
+        if class_name == "SafeDriving":  # ✅ SafeDriving은 무시
+            continue  
+
         state = state_flags[class_name]
 
-        if class_name in detected_classes:  # 감지됨
+        if class_name in detected_classes:  # ✅ 감지됨
             if not state["detected"]:  # 처음 감지된 경우
                 state["start_time"] = current_time
                 state["detected"] = True
             else:
                 # SleepyDriving은 2초 후, 나머지는 4초 후 알람
-                if class_name == "SleepyDriving":
-                    if current_time - state["start_time"] >= 2 and alarms[class_name].get_num_channels() == 0:
+                required_time = 2 if class_name == "SleepyDriving" else 4
+                
+                if state["start_time"] is not None and current_time - state["start_time"] >= required_time:
+                    if class_name in alarms and alarms[class_name].get_num_channels() == 0:  # ✅ KeyError 방지
                         alarms[class_name].play()
-                        state["start_time"] = current_time  # 알람 재생 후 시간 리셋
-                else:
-                    if current_time - state["start_time"] >= 4 and alarms[class_name].get_num_channels() == 0:
-                        alarms[class_name].play()
-                        state["start_time"] = current_time  # 알람 재생 후 시간 리셋
+                        state["start_time"] = current_time  # ✅ 알람 재생 후 시간 리셋
 
-        else:  # 감지가 안 됨 → 상태 초기화
-            state["start_time"] = None
-            state["detected"] = False
-
-
+        else:  # ✅ 감지가 안 되면 상태 초기화
+            if state["detected"]:  # ✅ 기존에 감지되었다가 사라진 경우에만 상태 초기화
+                state["start_time"] = None
+                state["detected"] = False
 
 def gen_frames():
     """ 웹캠에서 실시간 영상 받아오기 & YOLO ONNX 추론 """
     cap = cv2.VideoCapture(0)  # 웹캠 활성화
+    # cap.set(cv2.CAP_PROP_FPS, 30)  # FPS 제한
 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
         
-        # 첫 번째 ONNX 모델 실행 (Distract, Safe Driving, Sleepy Driving, Yawn)
-        detected_classes_1 = detect_objects(session_1, frame, class_names_1, (0, 255, 0))
+        # 두 번째 모델 (Calling, Drinking) 먼저 실행
+        detected_classes_2, bounding_boxes_2 = detect_objects(session_2, frame, class_names_2, (0, 0, 255))
 
-        # 두 번째 ONNX 모델 실행 (Calling, Drinking)
-        detected_classes_2 = detect_objects(session_2, frame, class_names_2, (0, 0, 255))
-
-        # 감지된 객체 목록을 합침
-        detected_classes = detected_classes_1 + detected_classes_2
+        if detected_classes_2:  # Calling, Drinking이 감지되면 다른 감지 차단
+            detected_classes = detected_classes_2
+            bounding_boxes = bounding_boxes_2
+        else:
+            # Calling, Drinking이 감지되지 않으면 첫 번째 모델 실행
+            detected_classes_1, bounding_boxes_1 = detect_objects(session_1, frame, class_names_1, (0, 255, 0))
+            detected_classes = detected_classes_1
+            bounding_boxes = bounding_boxes_1  
 
         # 감지된 객체에 따른 알람 처리
         process_alerts(detected_classes)
 
         # 감지된 데이터 확인 (터미널 출력)
-        print(f"감지된 행동: {detected_classes}")
+        print(f"📌 감지된 행동: {detected_classes}")
 
         # 감지된 행동을 웹으로 전송
         socketio.emit("detected_actions", {"actions": detected_classes})
 
+        # 바운딩 박스 & 라벨 표시 (해당 모델의 감지만)
+        for x1, y1, x2, y2, class_name, confidence in bounding_boxes:
+            color = (0, 0, 255) if class_name in class_names_2 else (0, 255, 0)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            cv2.putText(frame, f"{class_name} ({confidence:.2f})", (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+
         # 웹 스트리밍을 위한 프레임 변환
         _, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
 def video_feed():

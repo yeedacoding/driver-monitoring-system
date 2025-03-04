@@ -9,28 +9,28 @@ from flask_socketio import SocketIO
 app = Flask(__name__, static_folder='static')
 socketio = SocketIO(app, async_mode="threading")  # 비동기 모드 설정
 
-# ✅ ONNX 모델 로드
-onnx_model_path_1 = "weights/yolov11n_20250226_075134_e50b32_dataset_face_class_only/weights/best.onnx"
-onnx_model_path_2 = "weights/yolov11n_20250226_01_41_20_e50b32_dataset_calling_drinking_only/weights/best.onnx"
+# ONNX 모델 로드
+onnx_model_path_1 = "weights/best_face_only.onnx"
+onnx_model_path_2 = "weights/best_hand_only.onnx"
 
 session_1 = ort.InferenceSession(onnx_model_path_1, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 session_2 = ort.InferenceSession(onnx_model_path_2, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 
-# ✅ 클래스 정의
+# 클래스 정의
 class_names_1 = ["Distracted", "SafeDriving", "SleepyDriving", "Yawn"]
 class_names_2 = ["Calling", "Drinking"]
 
-# ✅ pygame 초기화 및 알람 파일 로드
+# pygame 초기화 및 알람 파일 로드
 pygame.mixer.init()
 alarms = {
-    "SleepyDriving": pygame.mixer.Sound("asset/sleepy.mp3"),
-    "Distracted": pygame.mixer.Sound("asset/distract.mp3"),
+    "SleepyDriving": pygame.mixer.Sound("asset/warning_sleepy.mp3"),
+    "Distracted": pygame.mixer.Sound("asset/warning_distract.mp3"),
     "Yawn": pygame.mixer.Sound("asset/yawn.mp3"),
     "Calling": pygame.mixer.Sound("asset/calling.mp3"),
     "Drinking": pygame.mixer.Sound("asset/drinking.mp3"),
 }
 
-# ✅ 감지 상태 변수 초기화
+# 감지 상태 변수 초기화
 state_flags = {
     "Distracted": {"start_time": None, "detected": False},
     "SafeDriving": {"start_time": None, "detected": False},  # 알람 없음
@@ -85,12 +85,12 @@ def process_alerts(detected_classes):
     current_time = time.time()
 
     for class_name in state_flags:
-        if class_name == "SafeDriving":  # ✅ SafeDriving은 무시
+        if class_name == "SafeDriving":  # SafeDriving은 무시
             continue  
 
         state = state_flags[class_name]
 
-        if class_name in detected_classes:  # ✅ 감지됨
+        if class_name in detected_classes:  # 감지됨
             if not state["detected"]:  # 처음 감지된 경우
                 state["start_time"] = current_time
                 state["detected"] = True
@@ -99,19 +99,19 @@ def process_alerts(detected_classes):
                 required_time = 2 if class_name == "SleepyDriving" else 4
                 
                 if state["start_time"] is not None and current_time - state["start_time"] >= required_time:
-                    if class_name in alarms and alarms[class_name].get_num_channels() == 0:  # ✅ KeyError 방지
+                    if class_name in alarms and alarms[class_name].get_num_channels() == 0:  # KeyError 방지
                         alarms[class_name].play()
-                        state["start_time"] = current_time  # ✅ 알람 재생 후 시간 리셋
+                        state["start_time"] = current_time  # 알람 재생 후 시간 리셋
 
-        else:  # ✅ 감지가 안 되면 상태 초기화
-            if state["detected"]:  # ✅ 기존에 감지되었다가 사라진 경우에만 상태 초기화
+        else:  # 감지가 안 되면 상태 초기화
+            if state["detected"]:  # 기존에 감지되었다가 사라진 경우에만 상태 초기화
                 state["start_time"] = None
                 state["detected"] = False
 
 def gen_frames():
     """ 웹캠에서 실시간 영상 받아오기 & YOLO ONNX 추론 """
     cap = cv2.VideoCapture(0)  # 웹캠 활성화
-    # cap.set(cv2.CAP_PROP_FPS, 30)  # FPS 제한
+    cap.set(cv2.CAP_PROP_FPS, 30)  # FPS 제한
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -134,7 +134,7 @@ def gen_frames():
         process_alerts(detected_classes)
 
         # 감지된 데이터 확인 (터미널 출력)
-        print(f"📌 감지된 행동: {detected_classes}")
+        print(f"감지된 행동: {detected_classes}")
 
         # 감지된 행동을 웹으로 전송
         socketio.emit("detected_actions", {"actions": detected_classes})

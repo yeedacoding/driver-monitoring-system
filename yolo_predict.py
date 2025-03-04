@@ -2,7 +2,7 @@ from ultralytics import YOLO
 
 # Load a pretrained YOLO11n model
 # model = YOLO("weights/yolov11n_20250214_e50b32/weights/best.pt")
-model = YOLO("weights/yolov11n_20250226_01_41_20_e50b32_dataset_calling_drinking_only/weights/best.pt")
+model = YOLO("best.pt")
 
 
 # Single stream with batch-size 1 inference

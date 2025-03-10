@@ -24,7 +24,7 @@
 - 25.02.12 ~ 25.03.04
 #### Timeline
 <img width="900" alt="image" src="https://github.com/user-attachments/assets/f64e90b0-c6e3-462a-ae33-037821304d80" /><br>
-
+<br>
 
 ## 🏔️ 개발 과정
 #### 1️⃣ 1차 : EDA(이미지 데이터셋 분석) - [상세 설명](https://github.com/yeedacoding/driver-monitoring-system/wiki)
@@ -39,3 +39,7 @@
 #### ➕ 부가 목표 : 얼굴 Landmark 검출을 통한 "졸음" 분석 알고리즘 개발 - [CODE](https://github.com/yeedacoding/driver-monitoring-system/tree/master/mediapipe_test)
 - 운전자의 연속적인 행동 패턴 (졸음, 고개 돌림 등)을 얼굴 landmark로부터 학습하여 보다 정확한 졸음 행동 탐지
 - ***적용 기술*** : `MediaPipe`
+<br>
+
+## 📒 PPT 및 개발일지
+- [notion](https://enormous-iron-b03.notion.site/1968132285b680708ad9f2b9a355904c)

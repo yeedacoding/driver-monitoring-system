@@ -27,7 +27,7 @@
 <br>
 
 ## 🏔️ 개발 과정
-#### 1️⃣ 1차 : EDA(이미지 데이터셋 분석) - [상세 설명](https://github.com/yeedacoding/driver-monitoring-system/wiki)
+#### 1️⃣ 1차 : EDA(이미지 데이터셋 분석) - [상세 설명](https://github.com/yeedacoding/driver-monitoring-system/wiki/EDA)
 - YOLO 모델 학습에 사용될 이미지 데이터셋 분석
 - ***적용 기술*** : `Pandas`, `Matplotlib`
 #### 2️⃣ 2차 : 실시간 운전자 얼굴 및 행동 감지 - [상세 설명](https://github.com/yeedacoding/driver-monitoring-system/wiki/YOLO-%EB%AA%A8%EB%8D%B8-%ED%9B%88%EB%A0%A8-%EB%B0%8F-%ED%85%8C%EC%8A%A4%ED%8A%B8)
